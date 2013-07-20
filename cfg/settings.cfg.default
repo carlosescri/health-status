@@ -1,0 +1,6 @@
+# -*- coding: utf-8 -*-
+
+SECRET_KEY = ''
+
+WITHINGS_OAUTH_KEY = ''
+WITHINGS_OAUTH_SECRET = ''
