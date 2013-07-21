@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-SECRET_KEY = ''
+DEBUG = False
+SECRET_KEY = 'YourVerySecretSessionCookieSignatureKey'
 
-WITHINGS_OAUTH_KEY = ''
-WITHINGS_OAUTH_SECRET = ''
+WITHINGS_OAUTH_KEY = 'YourWithingsOauthDevKey'
+WITHINGS_OAUTH_SECRET = 'YourWithingsOauthDevSecret'
