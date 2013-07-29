@@ -5,7 +5,8 @@ import json
 from flask import flash, redirect, request, url_for
 from flask import render_template
 from flask.ext.classy import FlaskView, route
-from flask.ext.login import fresh_login_required, login_user, logout_user
+from flask.ext.login import current_user, fresh_login_required, login_user, \
+    logout_user
 
 from dashboard import app, app_bcrypt, db
 from dashboard.auth import User
@@ -23,6 +24,9 @@ class RootView(FlaskView):
 
     @route('/login', methods=['GET', 'POST'])
     def login(self):
+        if current_user.is_authenticated():
+            return redirect(url_for('RootView:index'))
+
         form = LoginForm()
         if form.validate_on_submit():
             login_user(User(form.data['username']))
