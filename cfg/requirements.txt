@@ -2,9 +2,21 @@ Flask==0.10.1
 Flask-Bcrypt==0.5.2
 Flask-Classy==0.6.3
 Flask-Login==0.2.6
+Flask-SQLAlchemy==1.0
+Flask-WTF==0.8.4
 Jinja2==2.7
 MarkupSafe==0.18
+MySQL-python==1.2.4
+SQLAlchemy==0.8.2
+WTForms==1.0.4
 Werkzeug==0.9.2
+ipython==0.13.2
 itsdangerous==0.22
+oauthlib==0.5.0
 py-bcrypt==0.3
+readline==6.2.4.1
+requests==1.2.3
+requests-oauth==0.4.1
+requests-oauthlib==0.3.2
+-e git+https://github.com/carlosescri/python-withings.git@f04da4ccb0b54c0de3f795aeaee073fdde1fe41e#egg=withings-dev
 wsgiref==0.1.2

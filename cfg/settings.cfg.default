@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
 DEBUG = False
+CSRF_ENABLED = True
+SESSION_PROTECTION = 'strong'
 SECRET_KEY = 'YourVerySecretSessionCookieSignatureKey'
+
+SQLALCHEMY_DATABASE_URI = 'mysql://username:password@server/db?charset=utf8'
 
 WITHINGS_OAUTH_KEY = 'YourWithingsOauthDevKey'
 WITHINGS_OAUTH_SECRET = 'YourWithingsOauthDevSecret'

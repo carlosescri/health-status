@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% from "helpers/form.html" import render_field %}
+
+{% block headertitle %} Login{% endblock %}
+
+{% block body %}
+    <h1>Health Status Dashboard - Login</h1>
+
+    <form action="" method="post">
+        {{ form.hidden_tag() }}
+
+        {% if form.errors.global %}
+            <p>{{ form.errors.global }}</p>
+        {% endif %}
+
+        <dl>
+            {{ render_field(form.username) }}
+            {{ render_field(form.password) }}
+        </dl>
+
+        <button type="submit">Submit</button>
+    </form>
+{% endblock %}
