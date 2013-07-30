@@ -2,16 +2,19 @@
 
 import json
 
-from flask import flash, redirect, request, url_for
+from withings import WithingsAuth, WithingsApi
+
+from flask import flash, redirect, request, url_for, abort
 from flask import render_template
 from flask.ext.classy import FlaskView, route
-from flask.ext.login import current_user, login_user, logout_user
-from flask.ext.login import login_required, fresh_login_required
+from flask.ext.login import current_user, login_user, logout_user, \
+    fresh_login_required
 
-from dashboard import app, app_bcrypt, db
-from dashboard.auth import User
+from dashboard import app, db
+from dashboard.auth import User, Token
 from dashboard.decorators import check_configuration
-from dashboard.forms import LoginForm, CreateUserForm
+from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
+    ResetPasswordForm
 from dashboard.models import Setting
 
 
@@ -42,6 +45,36 @@ class RootView(FlaskView):
         logout_user()
         return redirect(url_for('RootView:index'))
 
+    @route('/remember-password', methods=['GET', 'POST'])
+    def remember_password(self):
+        form = RememberPasswordForm()
+
+        if form.validate_on_submit():
+            # create token and send by email
+            token = Token.create()
+
+            flash("We've sent you an email with instructions on how to reset "
+                  "your password.")
+            return redirect(url_for('RootView:index'))
+
+        return render_template('auth/remember_password.html', form=form)
+
+    @route('/reset-password/<token>', methods=['GET', 'POST'])
+    def reset_password(self, token):
+        if not Token.is_valid(token):
+            abort(404)
+
+        form = ResetPasswordForm()
+
+        if form.validate_on_submit():
+            Token.invalidate()
+            User.set_password(form.data['password1'])
+
+            flash("Your password was saved successfully. You can login now.")
+            return redirect(url_for('RootView:index'))
+
+        return render_template('auth/reset_password.html', form=form)
+
 RootView.register(app)
 
 
@@ -55,19 +88,18 @@ class InstallerView(FlaskView):
 
         form = CreateUserForm()
         if form.validate_on_submit():
-            passwd = app_bcrypt.generate_password_hash(form.data['password1'])
-
             u = Setting(key='username', value=form.data['username'])
-            p = Setting(key='password', value=passwd)
+            e = Setting(key='email', value=form.data['email'])
 
             db.session.add(u)
-            db.session.add(p)
+            db.session.add(e)
             db.session.commit()
 
-            flash('Your user was created successfully.')
+            User.set_password(form.data['password1'])
 
             login_user(User(form.data['username']))
 
+            flash('Your user was created successfully.')
             return redirect(url_for('ConfigView:index'))
 
         return render_template('installer/index.html', form=form)
@@ -79,10 +111,18 @@ class ConfigView(FlaskView):
     decorators = [check_configuration, fresh_login_required]
 
     def index(self):
-        return render_template('config/index.html')
+        try:
+            withings_config = json.loads(Setting.query.get('withings').value)
+        except AttributeError:
+            auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
+                                app.config.get('WITHINGS_CONSUMER_SECRET'))
+            withings_config = {'auth_url': auth.get_authorize_url()}
 
-    def withings(self):
-        return "WITHINGS"
+        return render_template('config/index.html', withings=withings_config)
+
+    @route('/withings/auth', methods=['POST'])
+    def withings_auth(self):
+        return "WITHINGS: " + app.config.get('WITHINGS_CONSUMER_KEY')
 
     def twitter(self):
         return("TWITTER")
@@ -93,7 +133,6 @@ class ConfigView(FlaskView):
 ConfigView.register(app)
 
 
-# http://www.withings.com/en/api
-# class WithingsView(FlaskView):
-#     def index(self):
-#         return
+@app.errorhandler(404)
+def http404(e):
+    return render_template('errors/404.html')

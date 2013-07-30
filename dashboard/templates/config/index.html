@@ -1,5 +1,22 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <p>Configuration (<a href="{{ url_for('RootView:index') }}">Home</a> / <a href="{{ url_for('RootView:logout') }}">Logout</a>)</p>
+    <h1>Configuration <small>(<a href="{{ url_for('RootView:index') }}">Home</a> / <a href="{{ url_for('RootView:logout') }}">Logout</a>)</small></h1>
+
+    <h2>Withings</h2>
+
+    {% if withings.auth_url %}
+    <p>You must authorize this app to access your Withings measurements. Click the link below and a new window will appear. Login to your withings account and authorize.</p>
+    <p><big><a href="{{ withings.auth_url }}" target="_blank">Authorize Now</a></big></p>
+    <p>A text like this will be displayed:</p>
+    <blockquote>
+        <code>oauth_token=5c860d8xxxxxfe1295522bxxxxxxxxxxe131f75828c6f343f10160f1275&amp;oauth_verifier=<b>SL27zR5xxxxx1o3</b></code>
+    </blockquote>
+    <p>copy the bolded part in the text input below and send</p>
+    <form action="{{ url_for('ConfigView:withings_auth') }}" method="post">
+        <input type="text" name="withings_verifier" placeholder="Paste the verifier here">
+        <button type="submit">Submit</button>
+    </form>
+    {% endif %}
+
 {% endblock %}

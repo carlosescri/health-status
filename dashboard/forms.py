@@ -10,8 +10,8 @@ from dashboard.models import Setting
 
 
 class LoginForm(Form):
-    username = TextField('Username', [validators.Required()])
-    password = PasswordField('Password', [validators.Required()])
+    username = TextField('Username', [validators.DataRequired()])
+    password = PasswordField('Password', [validators.DataRequired()])
 
     def validate(self):
         if not super(LoginForm, self).validate():
@@ -32,25 +32,41 @@ class LoginForm(Form):
         return True
 
 
-class CreateUserForm(Form):
-    username = TextField('Username', [
-        validators.Required(),
-        validators.Length(min=4, max=30),
-        validators.Regexp(r'^[\w.@+-]+$', re.IGNORECASE,
-                          "Letters, digits and '@', '.', '+', '-', '_' only.")
-    ])
+class ResetPasswordForm(Form):
     password1 = PasswordField('Password', [
-        validators.Required(),
+        validators.DataRequired(),
         validators.Length(min=8, max=50)
     ])
     password2 = PasswordField('Confirm Password', [
-        validators.Required(),
+        validators.DataRequired(),
         validators.EqualTo('password1', "Enter the same password as above, for "
                                         "verification.")
     ])
 
 
-class EditUserForm(CreateUserForm):
-    password0 = PasswordField('Old Password', [
-        validators.Required()
+class CreateUserForm(ResetPasswordForm):
+    username = TextField('Username', [
+        validators.DataRequired(),
+        validators.Length(min=4, max=30),
+        validators.Regexp(r'^[\w.@+-]+$', re.IGNORECASE,
+                          "Letters, digits and '@', '.', '+', '-', '_' only.")
     ])
+    email = TextField('Email', [
+        validators.DataRequired(),
+        validators.Email()
+    ])
+
+
+class RememberPasswordForm(Form):
+    email = TextField('Email', [
+        validators.DataRequired()
+    ])
+
+    def validate_email(self, field):
+        # This is done to have only one error message.
+        validator = validators.Email()
+        validator(self, field)
+
+        email_setting = Setting.query.get('email')
+        if not email_setting or email_setting.value != field.data:
+            raise validators.StopValidation('There is no user with that email.')
