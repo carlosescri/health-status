@@ -5,8 +5,8 @@ import json
 from flask import flash, redirect, request, url_for
 from flask import render_template
 from flask.ext.classy import FlaskView, route
-from flask.ext.login import current_user, fresh_login_required, login_user, \
-    logout_user
+from flask.ext.login import current_user, login_user, logout_user
+from flask.ext.login import login_required, fresh_login_required
 
 from dashboard import app, app_bcrypt, db
 from dashboard.auth import User
@@ -38,10 +38,6 @@ class RootView(FlaskView):
 
         return render_template('auth/login.html', form=form)
 
-    @fresh_login_required
-    def config(self):
-        return render_template('config/index.html')
-
     def logout(self):
         logout_user()
         return redirect(url_for('RootView:index'))
@@ -72,17 +68,29 @@ class InstallerView(FlaskView):
 
             login_user(User(form.data['username']))
 
-            return redirect(url_for('RootView:config'))
+            return redirect(url_for('ConfigView:index'))
 
         return render_template('installer/index.html', form=form)
 
 InstallerView.register(app)
 
 
-# class SettingsView(FlaskView):
-#     decorators = [require_not_installed]
+class ConfigView(FlaskView):
+    decorators = [check_configuration, fresh_login_required]
 
-# SettingsView.register(app)
+    def index(self):
+        return render_template('config/index.html')
+
+    def withings(self):
+        return "WITHINGS"
+
+    def twitter(self):
+        return("TWITTER")
+
+    def tumblr(self):
+        return "TUMBLR"
+
+ConfigView.register(app)
 
 
 # http://www.withings.com/en/api
