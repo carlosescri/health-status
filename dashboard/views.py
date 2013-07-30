@@ -68,9 +68,11 @@ class InstallerView(FlaskView):
             db.session.add(p)
             db.session.commit()
 
-            flash('Your user was created successfully. Please, log in.')
+            flash('Your user was created successfully.')
 
-            return redirect(url_for('RootView:index'))
+            login_user(User(form.data['username']))
+
+            return redirect(url_for('RootView:config'))
 
         return render_template('installer/index.html', form=form)
 

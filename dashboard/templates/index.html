@@ -1,5 +1,11 @@
 {% extends "layout.html" %}
 
 {% block body %}
-    <p>INSTALLED</p>
+<p>
+    {% if current_user.is_authenticated() %}
+    INSTALLED AND AUTHENTICATED (<a href="{{ url_for('RootView:config') }}">Configuration</a> / <a href="{{ url_for('RootView:logout') }}">Logout</a>)
+    {% else %}
+    INSTALLED (<a href="{{ url_for('RootView:login') }}">Login</a>)
+    {% endif %}
+</p>
 {% endblock %}
