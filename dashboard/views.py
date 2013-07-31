@@ -14,7 +14,7 @@ from dashboard import app, db
 from dashboard.auth import User, Token
 from dashboard.decorators import check_configuration
 from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
-    ResetPasswordForm
+    ResetPasswordForm, OAuthVerifierForm
 from dashboard.models import Setting
 
 
@@ -111,24 +111,74 @@ class ConfigView(FlaskView):
     decorators = [check_configuration, fresh_login_required]
 
     def index(self):
+        ctxt = {
+            'oauth_verifier_form': OAuthVerifierForm(),
+        }
+
+        # Get Withings config
         try:
-            withings_config = json.loads(Setting.query.get('withings').value)
+            ctxt['withings'] = Setting.query.get('withings').value
         except AttributeError:
             auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
                                 app.config.get('WITHINGS_CONSUMER_SECRET'))
-            withings_config = {'auth_url': auth.get_authorize_url()}
+            auth_url = auth.get_authorize_url()
 
-        return render_template('config/index.html', withings=withings_config)
+            withings = {'is_authenticated': False,
+                        'oauth_token': auth.oauth_token,
+                        'oauth_secret': auth.oauth_secret,
+                        'auth_url': auth_url}
 
-    @route('/withings/auth', methods=['POST'])
-    def withings_auth(self):
-        return "WITHINGS: " + app.config.get('WITHINGS_CONSUMER_KEY')
+            ws = Setting(key='withings', value=withings)
+            db.session.add(ws)
+            db.session.commit()
 
-    def twitter(self):
-        return("TWITTER")
+            ctxt['withings'] = withings
 
-    def tumblr(self):
-        return "TUMBLR"
+        return render_template('config/index.html', **ctxt)
+
+    @route('/oauth/withings', methods=['POST'])
+    def oauth_withings(self):
+        try:
+            cfg = Setting.query.get('withings')
+
+            form = OAuthVerifierForm()
+            if form.validate_on_submit():
+                cfg.value['oauth_verifier'] = form.data['oauth_verifier']
+
+                assert cfg in db.session.dirty
+
+                auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
+                                    app.config.get('WITHINGS_CONSUMER_SECRET'))
+
+                auth.oauth_token = cfg.value['oauth_token']
+                auth.oauth_secret = cfg.value['oauth_secret']
+
+                credentials = auth.get_credentials(cfg.value['oauth_verifier'])
+                credentials = credentials.__dict__
+
+                del credentials['consumer_key']
+                del credentials['consumer_secret']
+                del cfg.value['auth_url']
+
+                cfg.value.update(credentials)
+                cfg.value['is_authenticated'] = True
+
+                db.session.commit()
+
+                flash("Withings was authorized successfully.")
+            else:
+                flash("error")
+
+        except (AttributeError, KeyError):
+            flash("Can't authorize Withings.")
+
+        return redirect(url_for('ConfigView:index'))
+
+    # def twitter(self):
+    #     return("TWITTER")
+
+    # def tumblr(self):
+    #     return "TUMBLR"
 
 ConfigView.register(app)
 

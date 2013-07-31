@@ -8,6 +8,9 @@ from wtforms import TextField, PasswordField, validators
 from dashboard import app_bcrypt
 from dashboard.models import Setting
 
+#
+# User/Password related forms
+#
 
 class LoginForm(Form):
     username = TextField('Username', [validators.DataRequired()])
@@ -70,3 +73,11 @@ class RememberPasswordForm(Form):
         email_setting = Setting.query.get('email')
         if not email_setting or email_setting.value != field.data:
             raise validators.StopValidation('There is no user with that email.')
+
+
+#
+# OAuth related form
+#
+
+class OAuthVerifierForm(Form):
+    oauth_verifier = TextField('OAuth Verifier', [validators.DataRequired()])
