@@ -13,13 +13,23 @@
 
     {% if not withings.is_authenticated %}
         <a href="{{ withings.auth_url }}" target="_blank">Authorize Now</a>
-        <form action="{{ url_for('ConfigView:oauth_withings') }}" method="post">
+        <form action="{{ url_for('ConfigView:withings_oauth') }}" method="post">
             {{ oauth_verifier_form.hidden_tag() }}
             <dl>
                 {{ render_field(oauth_verifier_form.oauth_verifier, placeholder='Paste the verifier here') }}
             </dl>
             <button type="submit">Verify</button>
         </form>
+    {% else %}
+
+    <h3>User Info</h3>
+
+    <p><a href="{{ url_for('ConfigView:reload_data', path='withings/user') }}">Reload user info</a></p>
+    <ul>
+        <li>Carlos Escribano Rey</li>
+        <li>Male</li>
+        <li>1981-12-19</li>
+    </ul>
     {% endif %}
 
     <p>Other withings settings...</p>

@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import json
-
-from withings import WithingsAuth, WithingsApi
-
-from flask import flash, redirect, request, url_for, abort
+from flask import flash, redirect, request, url_for, abort, Response
 from flask import render_template
 from flask.ext.classy import FlaskView, route
 from flask.ext.login import current_user, login_user, logout_user, \
@@ -16,6 +12,8 @@ from dashboard.decorators import check_configuration
 from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
     ResetPasswordForm, OAuthVerifierForm
 from dashboard.models import Setting
+from dashboard.utils import get_api, withings_oauth_init, \
+    withings_oauth_verify, withings_get_measures
 
 
 class RootView(FlaskView):
@@ -24,6 +22,17 @@ class RootView(FlaskView):
 
     def index(self):
         return render_template('index.html')
+
+    @route('/withings/measures/<int:days>/<int:page>')
+    def withings_measures(self, days, page):
+        if days not in (5, 10, 15, 30, 60, 90) or page < 0:
+            abort(404)
+
+        response = Response(
+            withings_get_measures(offset=page, days=days, to_json=True),
+            status=200, mimetype='application/json')
+
+        return response
 
     @route('/login', methods=['GET', 'POST'])
     def login(self):
@@ -50,7 +59,7 @@ class RootView(FlaskView):
         form = RememberPasswordForm()
 
         if form.validate_on_submit():
-            # create token and send by email
+            # create token and TODO: send by email
             token = Token.create()
 
             flash("We've sent you an email with instructions on how to reset "
@@ -119,58 +128,62 @@ class ConfigView(FlaskView):
         try:
             ctxt['withings'] = Setting.query.get('withings').value
         except AttributeError:
-            auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
-                                app.config.get('WITHINGS_CONSUMER_SECRET'))
-            auth_url = auth.get_authorize_url()
-
-            withings = {'is_authenticated': False,
-                        'oauth_token': auth.oauth_token,
-                        'oauth_secret': auth.oauth_secret,
-                        'auth_url': auth_url}
-
-            ws = Setting(key='withings', value=withings)
-            db.session.add(ws)
-            db.session.commit()
-
-            ctxt['withings'] = withings
+            ctxt['withings'] = withings_oauth_init().value
 
         return render_template('config/index.html', **ctxt)
 
-    @route('/oauth/withings', methods=['POST'])
-    def oauth_withings(self):
-        try:
-            cfg = Setting.query.get('withings')
+    # Withings
 
+    @route('/withings/oauth', methods=['POST'])
+    def withings_oauth(self):
+        msg = "Can't authorize Withings."
+
+        try:
             form = OAuthVerifierForm()
             if form.validate_on_submit():
-                cfg.value['oauth_verifier'] = form.data['oauth_verifier']
+                cfg = withings_oauth_verify(form.data['oauth_verifier'])
 
-                assert cfg in db.session.dirty
+                assert cfg.value.get('is_authenticated', False) == True
+                msg = "Withings was authorized successfully."
+        except (AttributeError, KeyError, AssertionError):
+            pass
 
-                auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
-                                    app.config.get('WITHINGS_CONSUMER_SECRET'))
+        flash(msg)
+        return redirect(url_for('ConfigView:index'))
 
-                auth.oauth_token = cfg.value['oauth_token']
-                auth.oauth_secret = cfg.value['oauth_secret']
+    @route('/reload/<path:path>')
+    def reload_data(self, path):
+        allowed = ('withings/user',)
 
-                credentials = auth.get_credentials(cfg.value['oauth_verifier'])
-                credentials = credentials.__dict__
+        path = path.lower()
 
-                del credentials['consumer_key']
-                del credentials['consumer_secret']
-                del cfg.value['auth_url']
+        if path not in allowed:
+            abort(404)
 
-                cfg.value.update(credentials)
-                cfg.value['is_authenticated'] = True
+        try:
+            mod = path.split('/')[0]
+            key = path.split('/')[1]
 
+            api = get_api(mod)
+            data = None
+
+            if key == 'user':
+                data = api.get_user()
+
+            if data:
+                setting = Setting.get_or_create(path.replace('/', '_'))
+                setting.value = data
                 db.session.commit()
 
-                flash("Withings was authorized successfully.")
-            else:
-                flash("error")
-
-        except (AttributeError, KeyError):
-            flash("Can't authorize Withings.")
+            flash("The %s %s data was successfully reloaded." % (
+                mod.capitalize(),
+                key.capitalize()
+            ))
+        except AttributeError:
+            flash("There was a problem reloading the %s %s data." % (
+                mod.capitalize(),
+                key.capitalize()
+            ))
 
         return redirect(url_for('ConfigView:index'))
 
