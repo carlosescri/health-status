@@ -15,7 +15,7 @@ class Setting(db.Model):
         return '<User %r>' % self.key
 
     @classmethod
-    def get_or_create(cls, key, value=None):
+    def get_or_create(cls, key, value={}):
         obj = cls.query.get(key)
 
         if obj is None:
@@ -41,16 +41,16 @@ class BodyMeasure(db.Model):
     attribution = db.Column(db.SmallInteger, nullable=False,
                             default=WITHINGS_ATTRIBUTION_USER)
 
-    height = db.Column(db.Numeric(precision=5, scale=2))  # m.
+    height = db.Column(db.Numeric(precision=6, scale=3))  # m.
 
-    weight = db.Column(db.Numeric(precision=5, scale=2))  # kg.
-    fat_free_mass = db.Column(db.Numeric(precision=5, scale=2))  # kg.
-    fat_mass_weight = db.Column(db.Numeric(precision=5, scale=2))  # kg.
-    fat_ratio = db.Column(db.Numeric(precision=5, scale=2))  # kg.
+    weight = db.Column(db.Numeric(precision=6, scale=3))  # kg.
+    fat_free_mass = db.Column(db.Numeric(precision=6, scale=3))  # kg.
+    fat_mass_weight = db.Column(db.Numeric(precision=6, scale=3))  # kg.
+    fat_ratio = db.Column(db.Numeric(precision=6, scale=3))  # kg.
 
-    heart_pulse = db.Column(db.Numeric(precision=5, scale=2))  # bpm
-    systolic_blood_pressure = db.Column(db.Numeric(precision=5, scale=2))  # mmHg
-    diastolic_blood_pressure = db.Column(db.Numeric(precision=5, scale=2))  # mmHg
+    heart_pulse = db.Column(db.Numeric(precision=6, scale=3))  # bpm
+    systolic_blood_pressure = db.Column(db.Numeric(precision=6, scale=3))  # mmHg
+    diastolic_blood_pressure = db.Column(db.Numeric(precision=6, scale=3))  # mmHg
 
     def from_measure(self, measure):
         assert isinstance(measure, WithingsMeasureGroup)

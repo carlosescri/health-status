@@ -11,28 +11,39 @@ from dashboard.auth import User, Token
 from dashboard.decorators import check_configuration
 from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
     ResetPasswordForm, OAuthVerifierForm
-from dashboard.models import Setting
-from dashboard.utils import get_api, withings_oauth_init, \
+from dashboard.models import BodyMeasure, Setting
+from dashboard.utils import reload_config, withings_oauth_init, \
     withings_oauth_verify, withings_get_measures
 
 
 class RootView(FlaskView):
+    """ Main Controller """
+
     route_base = '/'
     decorators = [check_configuration]
 
     def index(self):
         return render_template('index.html')
 
-    @route('/withings/measures/<int:days>/<int:page>')
+    @route('/withings-measures/<int:days>/<int:page>')
     def withings_measures(self, days, page):
-        if days not in (5, 10, 15, 30, 60, 90) or page < 0:
+        """ Get measures from Withings cached data in JSON format.
+
+        Args:
+            - Number of days to get (5, 10, 15, 30, 60 or 90).
+            - Number of page to get, starting on 1.
+        """
+
+        if days not in (5, 10, 15, 30, 60, 90) or page < 1:
             abort(404)
 
-        response = Response(
-            withings_get_measures(offset=page, days=days, to_json=True),
-            status=200, mimetype='application/json')
+        offset = page - 1
 
-        return response
+        return Response(
+            withings_get_measures(offset=offset, days=days, to_json=True),
+            status=200,
+            mimetype='application/json'
+        )
 
     @route('/login', methods=['GET', 'POST'])
     def login(self):
@@ -88,10 +99,14 @@ RootView.register(app)
 
 
 class InstallerView(FlaskView):
+    """ App First Configuration """
+
     route_base = '/install'
 
     @route('/', methods=['GET', 'POST'])
     def index(self):
+        db.create_all()
+
         if not Setting.query.get('username') is None:
             return redirect(url_for('RootView:index'))
 
@@ -117,18 +132,17 @@ InstallerView.register(app)
 
 
 class ConfigView(FlaskView):
+    """ App Configuration """
+
     decorators = [check_configuration, fresh_login_required]
 
     def index(self):
         ctxt = {
             'oauth_verifier_form': OAuthVerifierForm(),
+            'withings_auth': withings_oauth_init().value,
+            'withings_user': Setting.get_or_create('withings_user').value,
+            'withings_sync': Setting.get_or_create('withings_sync').value
         }
-
-        # Get Withings config
-        try:
-            ctxt['withings'] = Setting.query.get('withings').value
-        except AttributeError:
-            ctxt['withings'] = withings_oauth_init().value
 
         return render_template('config/index.html', **ctxt)
 
@@ -145,15 +159,38 @@ class ConfigView(FlaskView):
 
                 assert cfg.value.get('is_authenticated', False) == True
                 msg = "Withings was authorized successfully."
+
+                reload_config('withings', 'user')
+
         except (AttributeError, KeyError, AssertionError):
             pass
 
         flash(msg)
         return redirect(url_for('ConfigView:index'))
 
+    @route('/withings/oauth/revoke')
+    def withings_revoke_oauth(self):
+        ws = Setting.query.get('withings_auth')
+        if ws:
+            db.session.delete(ws)
+            db.session.commit()
+
+        flash("OAuth credentials were successfully revoked.")
+        return redirect(url_for('ConfigView:index'))
+
+    @route('/uninstall')
+    def uninstall(self):
+        BodyMeasure.query.delete()
+        Setting.query.delete()
+
+        db.session.commit()
+        logout_user()
+
+        return redirect(url_for('RootView:index'))
+
     @route('/reload/<path:path>')
     def reload_data(self, path):
-        allowed = ('withings/user',)
+        allowed = ()  # Ex: withings/user
 
         path = path.lower()
 
@@ -164,16 +201,7 @@ class ConfigView(FlaskView):
             mod = path.split('/')[0]
             key = path.split('/')[1]
 
-            api = get_api(mod)
-            data = None
-
-            if key == 'user':
-                data = api.get_user()
-
-            if data:
-                setting = Setting.get_or_create(path.replace('/', '_'))
-                setting.value = data
-                db.session.commit()
+            reload_config(module=mod, key=key)
 
             flash("The %s %s data was successfully reloaded." % (
                 mod.capitalize(),

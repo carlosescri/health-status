@@ -4,13 +4,14 @@ import simplejson as json
 import time
 
 from calendar import timegm
-from datetime import date
+from datetime import date, datetime
 from dateutil import rrule
 from dateutil.relativedelta import relativedelta
 from withings import *
 
 from dashboard import app, db
-from dashboard.const import WITHINGS_CATEGORY_MEASURE, WITHINGS_ATTRIBUTION_USER
+from dashboard.const import WITHINGS_GENDER_MALE, WITHINGS_CATEGORY_MEASURE, \
+    WITHINGS_ATTRIBUTION_USER
 from dashboard.models import BodyMeasure, Setting
 
 
@@ -27,13 +28,33 @@ def get_api(name):
 def datetime_to_epoch(dt):
     return int(time.mktime(dt.timetuple()))
 
+def epoch_to_datetime(epoch):
+    return datetime.fromtimestamp(epoch)
+
+def reload_config(module, key):
+    api = get_api(module)
+    data = None
+
+    if key == 'user':
+        data = api.get_user()['users'][0]
+        data['gender'] = 'male' if data['gender'] == WITHINGS_GENDER_MALE else 'female'
+        #data['birthdate'] = time.strftime('%Y-%m-%d', time.gmtime(data['birthdate']))
+
+
+    if data:
+        setting = Setting.get_or_create("%s_%s" % (module, key))
+        setting.value = data
+        db.session.commit()
+
+
+
 #
 # Withings
 #
 
 def _get_withings_api_obj():
     try:
-        ws = Setting.query.get('withings').value
+        ws = Setting.query.get('withings_auth').value
 
         if ws.get('is_authenticated', False):
             consumer_key = app.config.get('WITHINGS_CONSUMER_KEY')
@@ -55,27 +76,32 @@ def _get_withings_api_obj():
 
 
 def withings_oauth_init():
-    auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
-                        app.config.get('WITHINGS_CONSUMER_SECRET'))
-    auth_url = auth.get_authorize_url()
+    ws = Setting.get_or_create('withings_auth')
 
-    ws = Setting.get_or_create(key='withings', value={
-        'is_authenticated': False,
-        'oauth_token': auth.oauth_token,
-        'oauth_secret': auth.oauth_secret,
-        'auth_url': auth_url
-    })
+    if not ws.value.get('is_authenticated', False):
 
-    db.session.add(ws)
-    db.session.commit()
+        auth = WithingsAuth(app.config.get('WITHINGS_CONSUMER_KEY'),
+                            app.config.get('WITHINGS_CONSUMER_SECRET'))
+        auth_url = auth.get_authorize_url()
+
+        ws.value = {
+            'is_authenticated': False,
+            'oauth_token': auth.oauth_token,
+            'oauth_secret': auth.oauth_secret,
+            'auth_url': auth_url
+        }
+
+        db.session.commit()
 
     return ws
 
 
 def withings_oauth_verify(oauth_verifier):
-    ws = Setting.get_or_create('withings')
+    """ Verify OAUTH credentials """
 
-    ws.value['oauth_verifier'] = oauth_verifier
+    ws = Setting.get_or_create('withings_auth')
+
+    ws.value['oauth_verifier'] = oauth_verifier.strip()
 
     assert ws in db.session.dirty
 
@@ -106,7 +132,7 @@ def withings_sync():
 
     try:
         measures = api.get_measures(lastupdate=ws.value['lastupdate'])
-    except KeyError:
+    except (TypeError, KeyError):
         measures = api.get_measures()
 
     for measure in measures:

@@ -11,8 +11,9 @@
 
     <h2>Withings</h2>
 
-    {% if not withings.is_authenticated %}
-        <a href="{{ withings.auth_url }}" target="_blank">Authorize Now</a>
+    {% if not withings_auth.is_authenticated %}
+
+        <a href="{{ withings_auth.auth_url }}" target="_blank">Authorize Now</a>
         <form action="{{ url_for('ConfigView:withings_oauth') }}" method="post">
             {{ oauth_verifier_form.hidden_tag() }}
             <dl>
@@ -20,18 +21,46 @@
             </dl>
             <button type="submit">Verify</button>
         </form>
+
     {% else %}
 
-    <h3>User Info</h3>
+        <h3>User Info</h3>
 
-    <p><a href="{{ url_for('ConfigView:reload_data', path='withings/user') }}">Reload user info</a></p>
-    <ul>
-        <li>Carlos Escribano Rey</li>
-        <li>Male</li>
-        <li>1981-12-19</li>
-    </ul>
+        {% if withings_user %}
+            <p><a href="{{ url_for('ConfigView:withings_revoke_oauth') }}">Revoke Authorization</a></p>
+            <ul>
+                <li>Display Name: {{ withings_user.firstname }} {{ withings_user.lastname }}</li>
+                <li>Display Gender: {{ withings_user.gender }}</li>
+                <li>Display Birth Date: {{ withings_user.birthdate|strftime('%d-%m-%Y') }}</li>
+            </ul>
+        {% else: %}
+            <p><a href="{{ url_for('ConfigView:reload_data', path='withings/user') }}">Load user info</a></p>
+        {% endif %}
+
     {% endif %}
 
+    <h3>Synchronization</h3>
+
+    {% if withings_sync %}
+        <p>Last Update: {{ withings_sync.lastupdate|strftime('%d-%m-%Y %H:%M:%S') }}</p>
+    {% endif %}
+
+    <ul>
+        <li>Each [N] hours.</li>
+    </ul>
+
     <p>Other withings settings...</p>
+
+    <h2>Other settings</h2>
+
+    <ul>
+        <li>Date format and timezone</li>
+        <li>Twitter settings</li>
+        <li>Post settings</li>
+    </ul>
+
+    <h2>Uninstall</h2>
+
+    <p><a href="{{ url_for('ConfigView:uninstall') }}">Uninstall</a></p>
 
 {% endblock %}
