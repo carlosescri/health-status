@@ -10,7 +10,7 @@ from dashboard import app, db
 from dashboard.auth import User, Token
 from dashboard.decorators import check_configuration
 from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
-    ResetPasswordForm, OAuthVerifierForm
+    ResetPasswordForm, OAuthVerifierForm, UninstallForm
 from dashboard.models import BodyMeasure, Setting
 from dashboard.utils import reload_config, withings_oauth_init, \
     withings_oauth_verify, withings_get_measures
@@ -141,7 +141,8 @@ class ConfigView(FlaskView):
             'oauth_verifier_form': OAuthVerifierForm(),
             'withings_auth': withings_oauth_init().value,
             'withings_user': Setting.get_or_create('withings_user').value,
-            'withings_sync': Setting.get_or_create('withings_sync').value
+            'withings_sync': Setting.get_or_create('withings_sync').value,
+            'uninstall_form': UninstallForm(),
         }
 
         return render_template('config/index.html', **ctxt)
@@ -178,15 +179,22 @@ class ConfigView(FlaskView):
         flash("OAuth credentials were successfully revoked.")
         return redirect(url_for('ConfigView:index'))
 
-    @route('/uninstall')
+    @route('/uninstall', methods=['POST'])
     def uninstall(self):
-        BodyMeasure.query.delete()
-        Setting.query.delete()
+        form = UninstallForm()
+        if form.validate_on_submit():
+            BodyMeasure.query.delete()
+            Setting.query.delete()
 
-        db.session.commit()
-        logout_user()
+            db.session.commit()
+            logout_user()
 
-        return redirect(url_for('RootView:index'))
+            flash('The application was successfully reset.')
+
+            return redirect(url_for('RootView:index'))
+        else:
+            flash('Please type "UNINSTALL" to reset the application.')
+            return redirect(url_for('ConfigView:index'))
 
     @route('/reload/<path:path>')
     def reload_data(self, path):

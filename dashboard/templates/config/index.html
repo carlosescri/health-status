@@ -61,6 +61,14 @@
 
     <h2>Uninstall</h2>
 
-    <p><a href="{{ url_for('ConfigView:uninstall') }}">Uninstall</a></p>
+    <form action="{{ url_for('ConfigView:uninstall') }}" method="post">
+        {{ uninstall_form.hidden_tag() }}
+        <dl>
+            <dt>Type <em>UNINSTALL</em> to reset the application. This action will remove all the stored data from the database and cannot be undone.</dt>
+            {{ render_field(uninstall_form.uninstall_word, label=False) }}
+        </dl>
+
+        <button type="submit">Uninstall</button>
+    </form>
 
 {% endblock %}

@@ -81,3 +81,15 @@ class RememberPasswordForm(Form):
 
 class OAuthVerifierForm(Form):
     oauth_verifier = TextField('OAuth Verifier', [validators.DataRequired()])
+
+
+#
+# Config related forms
+#
+
+class UninstallForm(Form):
+    uninstall_word = TextField('Type "UNINSTALL" to reset the application.', [validators.DataRequired()])
+
+    def validate_uninstall_word(self, field):
+        if field.data != 'UNINSTALL':
+            raise validators.StopValidation()
