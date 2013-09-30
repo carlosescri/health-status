@@ -9,3 +9,6 @@ SQLALCHEMY_DATABASE_URI = 'mysql://username:password@server/db?charset=utf8'
 
 WITHINGS_CONSUMER_KEY = 'YourWithingsOauthDevKey'
 WITHINGS_CONSUMER_SECRET = 'YourWithingsOauthDevSecret'
+
+BABEL_DEFAULT_LOCALE = 'en_US'
+BABEL_DEFAULT_TIMEZONE = 'UTC'

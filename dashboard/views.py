@@ -2,11 +2,12 @@
 
 from flask import flash, redirect, request, url_for, abort, Response
 from flask import render_template
+from flask.ext.babel import get_locale, get_timezone, refresh as refresh_locale
 from flask.ext.classy import FlaskView, route
 from flask.ext.login import current_user, login_user, logout_user, \
     fresh_login_required
 
-from dashboard import app, db
+from dashboard import app, app_babel, db
 from dashboard.auth import User, Token
 from dashboard.decorators import check_configuration
 from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
@@ -53,6 +54,8 @@ class RootView(FlaskView):
         form = LoginForm()
         if form.validate_on_submit():
             login_user(User(form.data['username']))
+
+            refresh_locale()
 
             if request.args.get('next'):
                 return redirect(request.args.get('next'))
