@@ -9,8 +9,8 @@ from dashboard.models import Setting
 @app_babel.timezoneselector
 def get_timezone():
     if current_user.is_authenticated():
-        timezone = Setting.query.get('timezone')
-        if timezone:
-            return timezone
+        global_setting = Setting.query.get('global')
+        if global_setting:
+            return global_setting.value.get('timezone', None)
 
     return None

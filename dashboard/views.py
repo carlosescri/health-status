@@ -2,16 +2,16 @@
 
 from flask import flash, redirect, request, url_for, abort, Response
 from flask import render_template
-from flask.ext.babel import get_locale, get_timezone, refresh as refresh_locale
+from flask.ext.babel import refresh as babel_refresh
 from flask.ext.classy import FlaskView, route
 from flask.ext.login import current_user, login_user, logout_user, \
     fresh_login_required
 
-from dashboard import app, app_babel, db
+from dashboard import app, db
 from dashboard.auth import User, Token
 from dashboard.decorators import check_configuration
 from dashboard.forms import LoginForm, CreateUserForm, RememberPasswordForm, \
-    ResetPasswordForm, OAuthVerifierForm, UninstallForm
+    ResetPasswordForm, OAuthVerifierForm, ConfigForm, UninstallForm
 from dashboard.models import BodyMeasure, Setting
 from dashboard.utils import reload_config, withings_oauth_init, \
     withings_oauth_verify, withings_get_measures
@@ -55,7 +55,7 @@ class RootView(FlaskView):
         if form.validate_on_submit():
             login_user(User(form.data['username']))
 
-            refresh_locale()
+            babel_refresh()
 
             if request.args.get('next'):
                 return redirect(request.args.get('next'))
@@ -139,16 +139,38 @@ class ConfigView(FlaskView):
 
     decorators = [check_configuration, fresh_login_required]
 
+    @route('/', methods=['GET', 'POST'])
     def index(self):
-        ctxt = {
-            'oauth_verifier_form': OAuthVerifierForm(),
-            'withings_auth': withings_oauth_init().value,
-            'withings_user': Setting.get_or_create('withings_user').value,
-            'withings_sync': Setting.get_or_create('withings_sync').value,
+        withings_auth = withings_oauth_init()
+        withings_user = Setting.get_or_create('withings_user')
+        withings_sync = Setting.get_or_create('withings_sync')
+
+        context = {
+            'withings_auth': withings_auth.value,
+            'withings_user': withings_user.value,
+            'withings_sync': withings_sync.value,
+
             'uninstall_form': UninstallForm(),
         }
 
-        return render_template('config/index.html', **ctxt)
+        if not withings_sync.value.get('is_authenticated', False):
+            context['oauth_verifier_form'] = OAuthVerifierForm()
+
+        config_form = ConfigForm(**(Setting.get_or_create('global').value))
+
+        if config_form.validate_on_submit():
+            global_setting = Setting.get_or_create('global')
+            global_setting.value = config_form.data
+
+            db.session.commit()
+            babel_refresh()
+
+            flash('Your settings were saved successfully.')
+            return redirect(url_for('ConfigView:index'))
+
+        context['config_form'] = config_form
+
+        return render_template('config/index.html', **context)
 
     # Withings
 

@@ -2,10 +2,12 @@
 
 import re
 
-from flask.ext.wtf import Form
-from wtforms import TextField, PasswordField, validators
+from pytz import common_timezones
 
-from dashboard import app_bcrypt
+from flask.ext.wtf import Form
+from wtforms import TextField, PasswordField, SelectField, validators
+
+from dashboard import app, app_bcrypt
 from dashboard.models import Setting
 
 #
@@ -86,6 +88,12 @@ class OAuthVerifierForm(Form):
 #
 # Config related forms
 #
+
+class ConfigForm(Form):
+    timezone = SelectField('Timezone',
+                           default=app.config['BABEL_DEFAULT_TIMEZONE'],
+                           choices=[(x, x) for x in common_timezones])
+
 
 class UninstallForm(Form):
     uninstall_word = TextField('Type "UNINSTALL" to reset the application.', [validators.DataRequired()])

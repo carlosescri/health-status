@@ -60,6 +60,16 @@
 
     <h2>Other settings</h2>
 
+    <form action="" method="post">
+        {{ config_form.hidden_tag() }}
+
+        <dl>
+            {{ render_field(config_form.timezone) }}
+        </dl>
+
+        <button type="submit">Save</button>
+    </form>
+
     <ul>
         <li>Date format and timezone</li>
         <li>Twitter settings</li>
