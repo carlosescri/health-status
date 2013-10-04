@@ -2,10 +2,12 @@
 
 import re
 
+from babel.localedata import locale_identifiers
 from pytz import common_timezones
 
 from flask.ext.wtf import Form
-from wtforms import TextField, PasswordField, SelectField, validators
+from wtforms import TextField, PasswordField, SelectField, BooleanField, \
+    validators
 
 from dashboard import app, app_bcrypt
 from dashboard.models import Setting
@@ -93,6 +95,16 @@ class ConfigForm(Form):
     timezone = SelectField('Timezone',
                            default=app.config['BABEL_DEFAULT_TIMEZONE'],
                            choices=[(x, x) for x in common_timezones])
+    locale = SelectField('Locale',
+                         default=app.config['BABEL_DEFAULT_LOCALE'],
+                         choices=[(x, x) for x in locale_identifiers()])
+    sync_interval = SelectField('Sync Interval',
+                                coerce=int,
+                                default=1,
+                                choices=[(x, '%d hours' % x) for x in range(1, 25)])
+    show_name = BooleanField('Full Name is visible to all.', default=True)
+    show_birthday = BooleanField('Birthday is visible to all.', default=True)
+    show_gender = BooleanField('Gender is visible to all.', default=True)
 
 
 class UninstallForm(Form):
