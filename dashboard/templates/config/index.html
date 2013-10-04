@@ -14,11 +14,14 @@
     {% if not withings_auth.is_authenticated %}
 
         <a href="{{ withings_auth.auth_url }}" target="_blank">Authorize Now</a>
+
         <form action="{{ url_for('ConfigView:withings_oauth') }}" method="post">
             {{ oauth_verifier_form.hidden_tag() }}
+
             <dl>
                 {{ render_field(oauth_verifier_form.oauth_verifier, placeholder='Paste the verifier here') }}
             </dl>
+
             <button type="submit">Verify</button>
         </form>
 
@@ -27,37 +30,48 @@
         <h3>User Info</h3>
 
         {% if withings_user %}
-            <p><a href="{{ url_for('ConfigView:withings_revoke_oauth') }}">Revoke Authorization</a></p>
+
             <ul>
                 <li>Display Name: {{ withings_user.firstname }} {{ withings_user.lastname }}</li>
                 <li>Display Gender: {{ withings_user.gender }}</li>
                 <li>Display Birth Date: {{ withings_user.birthdate|strftime('%d-%m-%Y') }}</li>
             </ul>
+
         {% else: %}
+
             <p><a href="{{ url_for('ConfigView:reload_data', path='withings/user') }}">Load user info</a></p>
+
         {% endif %}
 
     {% endif %}
 
-    <h3>Synchronization</h3>
+    <h2>Settings</h2>
 
-    {% if withings_sync %}
-        <p>Last Update: {{ withings_sync.lastupdate|strftime('%d-%m-%Y %H:%M:%S') }}</p>
+    <form action="" method="post">
+        {{ config_form.hidden_tag() }}
+
+        <dl>
+            {{ render_field(config_form.timezone) }}
+            {{ render_field(config_form.locale) }}
+
+            {{ render_field(config_form.sync_interval) }}
+            {% if withings_sync %}
+                <p>Last Update: {{ withings_sync.lastupdate|strftime('%d-%m-%Y %H:%M:%S') }}</p>
+            {% endif %}
+
+            {{ render_field(config_form.show_name) }}
+            {{ render_field(config_form.show_birthday) }}
+            {{ render_field(config_form.show_gender) }}
+        </dl>
+
+        <button type="submit">Save</button>
+    </form>
+
+    <h2>Revoke withings auth</h2>
+
+    {% if withings_auth.is_authenticated and withings_user %}
+        <p><a href="{{ url_for('ConfigView:withings_revoke_oauth') }}">Revoke Authorization</a></p>
     {% endif %}
-
-    <ul>
-        <li>Each [N] hours.</li>
-    </ul>
-
-    <p>Other withings settings...</p>
-
-    <h2>Other settings</h2>
-
-    <ul>
-        <li>Date format and timezone</li>
-        <li>Twitter settings</li>
-        <li>Post settings</li>
-    </ul>
 
     <h2>Uninstall</h2>
 

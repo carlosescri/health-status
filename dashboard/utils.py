@@ -47,6 +47,16 @@ def reload_config(module, key):
         db.session.commit()
 
 
+def get_global_setting(key=None):
+    global_setting = Setting.query.get('global')
+
+    if global_setting:
+        if key:
+            return global_setting.value.get(key, None)
+        else:
+            return global_setting.value
+
+    return None
 
 #
 # Withings

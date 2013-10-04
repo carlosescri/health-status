@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
-import time
-
 from flask import Flask
+from flask.ext.babel import Babel
 from flask.ext.bcrypt import Bcrypt
 from flask.ext.login import LoginManager
 from flask.ext.sqlalchemy import SQLAlchemy
@@ -19,11 +18,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'RootView:login'
 
+app_babel = Babel(app)
 
+import dashboard.i18n
+import dashboard.templatetags
 import dashboard.views
-
-# Register template filters
-
-@app.template_filter('strftime')
-def tpl_filter_strftime(i_date, s_format='%Y-%m-%d'):
-    return time.strftime(s_format, time.gmtime(i_date))
